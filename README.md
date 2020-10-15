@@ -11,7 +11,7 @@ https://mikro-orm.io/docs/installation/#setting-up-the-commandline-tool
 
 ### VSCODE
 
-option + esc (autocomplete.)
+option + esc (autocomplete)
 cmd + . (add import, make action)
 ctrl + ` (show/hide terminal)
 https://glebbahmutov.com/blog/configure-prettier-in-vscode/
