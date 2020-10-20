@@ -5,14 +5,17 @@ export class Post {
     @PrimaryKey()
     id!: number;
 
-    @Property() // означает колонку в бд
+    @Property({ type: 'Date' }) // означает колонку в бд
     createdAt = new Date();
 
-    @Property({ onUpdate: () => new Date() })
+    @Property({ type: 'Date', onUpdate: () => new Date() })
     updatedAt = new Date();
 
-    @Property()
+    @Property({ type: 'text' })
     title!: string;
+
+    @Property()
+    description?: string = '';
 
     // @ManyToOne() // when you provide correct type hint, ORM will read it for you
     // author!: Author;
