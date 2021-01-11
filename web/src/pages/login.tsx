@@ -5,59 +5,49 @@ import { Input } from '@chakra-ui/input';
 import { Button } from '@chakra-ui/button';
 import Wrapper from '../components/wrapper/wrapper';
 import { Box } from '@chakra-ui/react';
-import { FieldError, useRegisterMutation } from '../generated/graphql';
+import { FieldError, useLoginMutation } from '../generated/graphql';
 import { toErrorMap } from '../utils/error.utils';
 import { useRouter } from 'next/router';
 
-type RegisterPageProps = {};
+type LoginPageProps = {};
 
-const RegisterPage = memo<RegisterPageProps>(() => {
+const LoginPage = memo<LoginPageProps>(() => {
     const router = useRouter();
-    const [{}, register] = useRegisterMutation();
+    const [{}, login] = useLoginMutation();
 
     function validateName(value: string) {
         return value ? null : 'Name is required';
     }
 
-    function validateEmail(value: string = '') {
-        let error;
-
-        if (value.trim() && !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i.test(value.trim())) {
-            error = 'Invalid email address';
-        }
-
-        return error;
-    }
-
     return (
         <Wrapper>
             <Formik
-                initialValues={{ username: '', email: '', password: '' }}
-                onSubmit={(values, actions) => {
-                    setTimeout(async () => {
-                        // console.log('FormValues ', values);
-                        const { username, password } = values;
+                initialValues={{ username: '', password: '' }}
+                onSubmit={async (values, actions) => {
+                    // console.log('FormValues ', values);
+                    const { username, password } = values;
 
-                        try {
-                            const { data } = await register({
+                    try {
+                        const { data } = await login({
+                            options: {
                                 username,
                                 password,
-                            });
+                            },
+                        });
 
-                            if (Array.isArray(data?.register?.errors)) {
-                                actions.setErrors(toErrorMap(data?.register?.errors as FieldError[]));
-                            } else {
-                                // registration/login passed
-                                router.push('/');
-                            }
-                        } catch (e) {
-                            console.error('Register.tsx register error ', e);
-                        } finally {
-                            // чтобы остановить спиннер могу сделать так, а могу просто вернуть промис и когда он
-                            // разрезолвится то спиннер пропадет
-                            actions.setSubmitting(false);
+                        if (Array.isArray(data?.login?.errors)) {
+                            actions.setErrors(toErrorMap(data?.login.errors as FieldError[]));
+                        } else {
+                            // registration/login passed
+                            router.push('/');
                         }
-                    }, 1000);
+                    } catch (e) {
+                        console.error('Login.tsx login error ', e);
+                    } finally {
+                        // чтобы остановить спиннер могу сделать так, а могу просто вернуть промис и когда он
+                        // разрезолвится то спиннер пропадет
+                        actions.setSubmitting(false);
+                    }
                 }}
             >
                 {props => {
@@ -78,15 +68,6 @@ const RegisterPage = memo<RegisterPageProps>(() => {
                                     )}
                                 </Field>
                             </Box>
-                            <Field name="email" validate={validateEmail}>
-                                {({ field, form }: any) => (
-                                    <FormControl isInvalid={form.errors.email && form.touched.email}>
-                                        <FormLabel htmlFor="email">Email</FormLabel>
-                                        <Input {...field} id="email" placeholder="email" />
-                                        <FormErrorMessage>{form.errors.email}</FormErrorMessage>
-                                    </FormControl>
-                                )}
-                            </Field>
                             <Field name="password">
                                 {({ field, form }: any) => (
                                     <FormControl isInvalid={form.errors.password && form.touched.password} isRequired>
@@ -97,7 +78,7 @@ const RegisterPage = memo<RegisterPageProps>(() => {
                                 )}
                             </Field>
                             <Button mt={4} colorScheme="teal" isLoading={props.isSubmitting} type="submit">
-                                Register
+                                Login
                             </Button>
                         </Form>
                     );
@@ -107,4 +88,4 @@ const RegisterPage = memo<RegisterPageProps>(() => {
     );
 });
 
-export default RegisterPage;
+export default LoginPage;

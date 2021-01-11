@@ -11,3 +11,5 @@ export const DBErrorCodes = new Map<string, { code: string; message: string }>([
         },
     ],
 ]);
+
+export const QID = 'qid';

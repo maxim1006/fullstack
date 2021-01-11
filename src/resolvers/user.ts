@@ -2,7 +2,7 @@ import { Arg, Ctx, Field, InputType, Mutation, ObjectType, Query, Resolver } fro
 import { AppContext } from '../types';
 import { User } from '../entities/User';
 import argon2 from 'argon2';
-import { DBErrorCodes, ERROR_ALREADY_EXISTS } from '../constants';
+import { DBErrorCodes, ERROR_ALREADY_EXISTS, QID } from '../constants';
 
 // обычно использую @Arg как в post но тут рассматриваю альтернативный подход, вместо нескольких Arg 1 объект
 // @InputType для описания @Arg
@@ -119,10 +119,24 @@ export class UserResolver {
             };
         }
 
-        // добавляю юзеру сессию, можно проверить в гкл, в сессии могу хранить что угодно
+        // добавляю юзеру сессию, можно проверить в гкл, в сессии могу хранить что угодно, в принципе тут храню
+        // userId и эта запись закидывает куку с сессией, но могу добавить еще какую-нибудь инфо в сессию
         req.session!.userId = user.id;
 
         return { user };
+    }
+
+    @Mutation(() => Boolean)
+    async logout(@Ctx() { req, res }: AppContext): Promise<boolean> {
+        // удаляю из куков 'qid'
+        res.clearCookie(QID);
+
+        return new Promise(res =>
+            // в redis удаляю сессию
+            req.session?.destroy(err => {
+                res(!err);
+            })
+        );
     }
 
     @Mutation(() => UserResponse)

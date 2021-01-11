@@ -1,5 +1,5 @@
 import { MikroORM } from '@mikro-orm/core';
-import { __prod__ } from './constants';
+import { __prod__, QID } from './constants';
 import microConfig from './mikro-orm.config';
 import express from 'express';
 import { ApolloServer } from 'apollo-server-express';
@@ -40,7 +40,7 @@ const main = async () => {
     // могу qid найти в куках после логина, только надо на шестеренку и поставить requst.credentials: "include"
     app.use(
         session({
-            name: 'qid',
+            name: QID,
             // говорим что подключаем редис
             // disableTouch отключает ttl (как долго в редис будет храниться сессия, https://github.com/tj/connect-redis#ttl ) говоря редис что мы сами будем управлять продлением сессии
             store: new RedisStore({ client: redisClient, disableTouch: true }),
