@@ -2,6 +2,9 @@
 
 Создаю тсконфиг для ноды реакт и реакт нейтив
 
+### postgres
+Открываю приложение и медленно))) ввожу postgres пароль
+
 ### mikro-orm
 Смотрит что написал в entities папке и сравнивает что есть в дб, создает миграционный файл и закидывает туда инфо, которую описал в entities, как плюшка это на тайпскрипте да еще и с гкл интегрировано
 
@@ -67,6 +70,9 @@ s%3A-RJwsdHP5gjPOeKofhAH_hchYtPVlsxA.itczDlmfxL69dajmXrW0QLYE5AKj50b3l7uyopnfK1E
 ### next.js
 сделать приложение
 npx create-next-app --example with-chakra-ui-typescript web
+
+### nodemailer
+Если забыл пароль присылаю его с помощью nodemailer, могу с помощью гугл  и тд
 
 ### links
 

@@ -8,6 +8,8 @@ import { Box } from '@chakra-ui/react';
 import { FieldError, useLoginMutation } from '../generated/graphql';
 import { toErrorMap } from '../utils/error.utils';
 import { useRouter } from 'next/router';
+import { createUrqlClient } from '../utils/create-urql-client.utils';
+import { withUrqlClient } from 'next-urql';
 
 type LoginPageProps = {};
 
@@ -22,18 +24,13 @@ const LoginPage = memo<LoginPageProps>(() => {
     return (
         <Wrapper>
             <Formik
-                initialValues={{ username: '', password: '' }}
+                initialValues={{ usernameOrEmail: '', password: '' }}
                 onSubmit={async (values, actions) => {
                     // console.log('FormValues ', values);
-                    const { username, password } = values;
+                    // const { usernameOrEmail, password } = values;
 
                     try {
-                        const { data } = await login({
-                            options: {
-                                username,
-                                password,
-                            },
-                        });
+                        const { data } = await login(values);
 
                         if (Array.isArray(data?.login?.errors)) {
                             actions.setErrors(toErrorMap(data?.login.errors as FieldError[]));
@@ -55,15 +52,15 @@ const LoginPage = memo<LoginPageProps>(() => {
                     return (
                         <Form>
                             <Box mt={4}>
-                                <Field name="username" validate={validateName}>
+                                <Field name="usernameOrEmail" validate={validateName}>
                                     {({ field, form }: any) => (
                                         <FormControl
-                                            isInvalid={form.errors.username && form.touched.username}
+                                            isInvalid={form.errors.usernameOrEmail && form.touched.usernameOrEmail}
                                             isRequired
                                         >
-                                            <FormLabel htmlFor="username">First name</FormLabel>
-                                            <Input {...field} id="username" placeholder="name" />
-                                            <FormErrorMessage>{form.errors.username}</FormErrorMessage>
+                                            <FormLabel htmlFor="usernameOrEmail">User name or email</FormLabel>
+                                            <Input {...field} id="usernameOrEmail" placeholder="name" />
+                                            <FormErrorMessage>{form.errors.usernameOrEmail}</FormErrorMessage>
                                         </FormControl>
                                     )}
                                 </Field>
@@ -88,4 +85,4 @@ const LoginPage = memo<LoginPageProps>(() => {
     );
 });
 
-export default LoginPage;
+export default withUrqlClient(createUrqlClient)(LoginPage);

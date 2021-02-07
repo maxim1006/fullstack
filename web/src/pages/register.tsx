@@ -8,6 +8,8 @@ import { Box } from '@chakra-ui/react';
 import { FieldError, useRegisterMutation } from '../generated/graphql';
 import { toErrorMap } from '../utils/error.utils';
 import { useRouter } from 'next/router';
+import { withUrqlClient } from 'next-urql';
+import { createUrqlClient } from '../utils/create-urql-client.utils';
 
 type RegisterPageProps = {};
 
@@ -36,12 +38,15 @@ const RegisterPage = memo<RegisterPageProps>(() => {
                 onSubmit={(values, actions) => {
                     setTimeout(async () => {
                         // console.log('FormValues ', values);
-                        const { username, password } = values;
+                        const { username, password, email } = values;
 
                         try {
                             const { data } = await register({
-                                username,
-                                password,
+                                options: {
+                                    username,
+                                    email,
+                                    password,
+                                },
                             });
 
                             if (Array.isArray(data?.register?.errors)) {
@@ -80,7 +85,7 @@ const RegisterPage = memo<RegisterPageProps>(() => {
                             </Box>
                             <Field name="email" validate={validateEmail}>
                                 {({ field, form }: any) => (
-                                    <FormControl isInvalid={form.errors.email && form.touched.email}>
+                                    <FormControl isInvalid={form.errors.email && form.touched.email} isRequired>
                                         <FormLabel htmlFor="email">Email</FormLabel>
                                         <Input {...field} id="email" placeholder="email" />
                                         <FormErrorMessage>{form.errors.email}</FormErrorMessage>
@@ -107,4 +112,4 @@ const RegisterPage = memo<RegisterPageProps>(() => {
     );
 });
 
-export default RegisterPage;
+export default withUrqlClient(createUrqlClient)(RegisterPage);

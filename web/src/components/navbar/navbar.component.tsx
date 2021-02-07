@@ -2,6 +2,7 @@ import { Box, Button, Flex, Link } from '@chakra-ui/react';
 import React, { memo } from 'react';
 import NextLink from 'next/link';
 import { useLogoutMutation, useMeQuery } from '../../generated/graphql';
+import { isServer } from '../../utils/common.utils';
 
 type NavBarProps = {};
 
@@ -10,10 +11,17 @@ const NavBar = memo<NavBarProps>(() => {
     // нетворк, но еще лучше использовать нормализованный кеш
     // https://formidable.com/open-source/urql/docs/graphcache/
     // const [{ data, fetching }] = useMeQuery({ requestPolicy: 'network-only' });
-    const [{ data, fetching }] = useMeQuery();
-    const [{ fetching: logoutFetching }, logout] = useLogoutMutation();
+    const [{ data, fetching }] = useMeQuery({
+        // так как навбар на страницах с ssr нужно сказать чтобы этот запрос скипался при ssr делаю это через pause: true, проверяя
+        // наличие window
+        pause: isServer(),
+    });
+    // @ts-ignore logoutData example
+    const [{ data: logoutData, fetching: logoutFetching }, logout] = useLogoutMutation();
 
     let body = null;
+
+    // console.log(data);
 
     // data is loading
     if (fetching) {

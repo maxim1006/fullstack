@@ -14,9 +14,15 @@ import { AppContext } from './types';
 import cors from 'cors';
 
 const main = async () => {
+    // send test email
+    // sendEmail('maximprosv@gmail.com', 'Hello Max');
+
     // connect to db
     // migrations in migration task
     const orm = await MikroORM.init(microConfig);
+
+    // удалить всех пользователей
+    // await orm.em.nativeDelete(User, {});
 
     // автоматом будет создавать post таблицу, если будет ошибка надо удалить таблицу в postgres
     // но я использую отдельный скрипт и таску migrate чтобы не ловить ошибки что уже все замегрировано

@@ -1,19 +1,12 @@
-import { Arg, Ctx, Field, InputType, Mutation, ObjectType, Query, Resolver } from 'type-graphql';
+import { Arg, Ctx, Field, Mutation, ObjectType, Query, Resolver } from 'type-graphql';
 import { AppContext } from '../types';
 import { User } from '../entities/User';
 import argon2 from 'argon2';
 import { DBErrorCodes, ERROR_ALREADY_EXISTS, QID } from '../constants';
-
-// обычно использую @Arg как в post но тут рассматриваю альтернативный подход, вместо нескольких Arg 1 объект
-// @InputType для описания @Arg
-@InputType()
-class UsernamePasswordInput {
-    @Field()
-    username: string;
-
-    @Field()
-    password: string;
-}
+import { ExtendedSessionType } from '../models/session.model';
+import { UsernamePasswordInput } from '../models/username-password-input.model';
+import { validateRegister } from '../validators/user.validator';
+// import { sendEmail } from '../utils/send-emails';
 
 @ObjectType()
 class FieldError {
@@ -36,15 +29,30 @@ class UserResponse {
 
 @Resolver()
 export class UserResolver {
+    @Mutation(() => Boolean)
+    async forgotPassword(@Arg('email') email: string, @Ctx() { em }: AppContext): Promise<boolean> {
+        const user = await em.findOne(User, { username: email });
+
+        if (!user) {
+            // email is not in the db
+            // в этом случае просто возвращаем true чтобы запретить перебор emails и отсылки фишинговых писем
+            return true;
+        }
+
+        // await sendEmail(email);
+
+        return true;
+    }
+
     @Query(() => User, { nullable: true })
     async me(@Ctx() { req, em }: AppContext): Promise<User | null> {
         // not logged in, userId is set in login method
-        if (!req.session?.userId) {
+        if (!(req.session as ExtendedSessionType)?.userId) {
             return null;
         }
 
         // logged in
-        return await em.findOne(User, { id: req.session?.userId });
+        return await em.findOne(User, { id: (req.session as ExtendedSessionType)?.userId });
     }
 
     // UserResponse то что нужно возвращать из register и что вернет гкл
@@ -54,21 +62,15 @@ export class UserResolver {
         @Arg('options') options: UsernamePasswordInput,
         @Ctx() { em, req }: AppContext
     ): Promise<UserResponse> {
-        if (options.username.length <= 2) {
-            return {
-                errors: [{ field: 'username', message: 'Please provide username with length more than 2 symbols' }],
-            };
-        }
+        const errors = validateRegister(options);
 
-        if (options.password.length <= 2) {
-            return {
-                errors: [{ field: 'password', message: 'Please provide password with length more than 2 symbols' }],
-            };
+        if (errors) {
+            return { errors };
         }
 
         const hashedPassword = await argon2.hash(options.password);
         // создаю пользователя
-        const user = em.create(User, { username: options.username, password: hashedPassword });
+        const user = em.create(User, { username: options.username, email: options.email, password: hashedPassword });
 
         try {
             // записываю в бд
@@ -84,28 +86,35 @@ export class UserResolver {
         }
 
         // store userId session, set cookie on the user, keep user logged in
-        req.session!.userId = user.id;
+        (req.session as ExtendedSessionType)!.userId = user.id;
 
         return { user };
     }
 
     @Mutation(() => UserResponse)
-    async login(@Arg('options') options: UsernamePasswordInput, @Ctx() { em, req }: AppContext): Promise<UserResponse> {
-        const user = await em.findOne(User, { username: options.username });
+    async login(
+        @Arg('usernameOrEmail') usernameOrEmail: string,
+        @Arg('password') password: string,
+        @Ctx() { em, req }: AppContext
+    ): Promise<UserResponse> {
+        const user = await em.findOne(
+            User,
+            usernameOrEmail.includes('@') ? { email: usernameOrEmail } : { username: usernameOrEmail }
+        );
 
         // так обрабатываю ошибки в гкл
         if (!user) {
             return {
                 errors: [
                     {
-                        field: 'username',
-                        message: `there is no such user: ${options.username}`,
+                        field: 'usernameOrEmail',
+                        message: `there is no such user: ${usernameOrEmail}`,
                     },
                 ],
             };
         }
 
-        const valid = await argon2.verify(user.password, options.password);
+        const valid = await argon2.verify(user.password, password);
 
         // так обрабатываю ошибки в гкл
         if (!valid) {
@@ -121,7 +130,7 @@ export class UserResolver {
 
         // добавляю юзеру сессию, можно проверить в гкл, в сессии могу хранить что угодно, в принципе тут храню
         // userId и эта запись закидывает куку с сессией, но могу добавить еще какую-нибудь инфо в сессию
-        req.session!.userId = user.id;
+        (req.session as ExtendedSessionType)!.userId = user.id;
 
         return { user };
     }
@@ -134,7 +143,12 @@ export class UserResolver {
         return new Promise(res =>
             // в redis удаляю сессию
             req.session?.destroy(err => {
-                res(!err);
+                if (err) {
+                    console.log('logout error ', err);
+                    return res(false);
+                }
+
+                res(true);
             })
         );
     }
