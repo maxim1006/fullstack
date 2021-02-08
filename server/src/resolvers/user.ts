@@ -74,7 +74,8 @@ export class UserResolver {
             };
         }
 
-        const userId = await redis.get(FORGET_PASSWORD_PREFIX + token);
+        const tokenKey = FORGET_PASSWORD_PREFIX + token;
+        const userId = await redis.get(tokenKey);
 
         if (!userId) {
             return {
@@ -98,6 +99,9 @@ export class UserResolver {
 
         user.password = await argon2.hash(newPassword);
         await em.persistAndFlush(user);
+
+        // удаляю этот кей после апдейта пароля, чтобы нельзя было использовать токен после обнуления пароля
+        await redis.del(tokenKey);
 
         // login user
         (req.session as ExtendedSessionType)!.userId = user.id;

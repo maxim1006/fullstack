@@ -1,7 +1,7 @@
 import { GetStaticPaths, GetStaticProps, NextPage } from 'next';
 import { Field, Form, Formik } from 'formik';
 import { FieldError, useChangePasswordMutation } from '../../generated/graphql';
-import { Box } from '@chakra-ui/react';
+import { Box, Link } from '@chakra-ui/react';
 import { FormControl, FormErrorMessage, FormLabel } from '@chakra-ui/form-control';
 import { Input } from '@chakra-ui/input';
 import { Button } from '@chakra-ui/button';
@@ -11,6 +11,7 @@ import { toErrorMap } from '../../utils/error.utils';
 import { useRouter } from 'next/router';
 import { withUrqlClient } from 'next-urql';
 import { createUrqlClient } from '../../utils/create-urql-client.utils';
+import NextLink from 'next/link';
 
 const ChangePassword: NextPage<{ token: string }> = ({ token }) => {
     const [, changePassword] = useChangePasswordMutation();
@@ -54,7 +55,16 @@ const ChangePassword: NextPage<{ token: string }> = ({ token }) => {
                                         >
                                             <FormLabel htmlFor="newPassword">New password</FormLabel>
                                             <Input {...field} id="newPassword" placeholder="new password" />
-                                            {tokenError && <div style={{ color: 'red' }}>{tokenError}</div>}
+                                            {tokenError && (
+                                                <Box>
+                                                    <Box style={{ color: 'red' }}>{tokenError}</Box>
+                                                    <Box>
+                                                        <NextLink href="/forgot-password">
+                                                            <Link>Change Password</Link>
+                                                        </NextLink>
+                                                    </Box>
+                                                </Box>
+                                            )}
                                             <FormErrorMessage>{form.errors.newPassword}</FormErrorMessage>
                                         </FormControl>
                                     )}
@@ -71,8 +81,10 @@ const ChangePassword: NextPage<{ token: string }> = ({ token }) => {
     );
 };
 
+// dont ssr this page
 export default withUrqlClient(createUrqlClient)(ChangePassword as any);
 
+// у URQL своя жизнь поэтому должен сделать как выше
 export const getStaticProps: GetStaticProps = async context => {
     return {
         props: { token: context.params?.token },
