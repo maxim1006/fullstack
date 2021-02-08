@@ -2,11 +2,12 @@ import { Arg, Ctx, Field, Mutation, ObjectType, Query, Resolver } from 'type-gra
 import { AppContext } from '../types';
 import { User } from '../entities/User';
 import argon2 from 'argon2';
-import { DBErrorCodes, ERROR_ALREADY_EXISTS, QID } from '../constants';
+import { DBErrorCodes, ERROR_ALREADY_EXISTS, FORGET_PASSWORD_PREFIX, QID } from '../constants';
 import { ExtendedSessionType } from '../models/session.model';
 import { UsernamePasswordInput } from '../models/username-password-input.model';
 import { validateRegister } from '../validators/user.validator';
-// import { sendEmail } from '../utils/send-emails';
+import { sendEmail } from '../utils/send-emails';
+import { v4 } from 'uuid';
 
 @ObjectType()
 class FieldError {
@@ -30,8 +31,8 @@ class UserResponse {
 @Resolver()
 export class UserResolver {
     @Mutation(() => Boolean)
-    async forgotPassword(@Arg('email') email: string, @Ctx() { em }: AppContext): Promise<boolean> {
-        const user = await em.findOne(User, { username: email });
+    async forgotPassword(@Arg('email') email: string, @Ctx() { em, redis }: AppContext): Promise<boolean> {
+        const user = await em.findOne(User, { email });
 
         if (!user) {
             // email is not in the db
@@ -39,7 +40,13 @@ export class UserResolver {
             return true;
         }
 
-        // await sendEmail(email);
+        const token = v4();
+
+        // записываю в редис забытый пароль и юзера и экспйрю его из бд через 24 часа
+        await redis.set(FORGET_PASSWORD_PREFIX + token, user.id, 'ex', 1000 * 60 * 60 * 24); // 1 day
+
+        // помимо редиректа  на страничку в заменой пароля еще должен создать токен
+        await sendEmail(email, `<a href="http://localhost:3000/change-password/${token}">Reset password</a>`);
 
         return true;
     }
@@ -53,6 +60,51 @@ export class UserResolver {
 
         // logged in
         return await em.findOne(User, { id: (req.session as ExtendedSessionType)?.userId });
+    }
+
+    @Mutation(() => UserResponse)
+    async changePassword(
+        @Arg('newPassword') newPassword: string,
+        @Arg('token') token: string,
+        @Ctx() { redis, em, req }: AppContext
+    ): Promise<UserResponse> {
+        if (newPassword.length <= 2) {
+            return {
+                errors: [{ field: 'newPassword', message: 'Please provide password with length more than 2 symbols' }],
+            };
+        }
+
+        const userId = await redis.get(FORGET_PASSWORD_PREFIX + token);
+
+        if (!userId) {
+            return {
+                errors: [{ field: 'token', message: 'token expired' }],
+            };
+        }
+
+        const user = await em.findOne(User, { id: +userId });
+
+        // так обрабатываю ошибки в гкл
+        if (!user) {
+            return {
+                errors: [
+                    {
+                        field: 'token',
+                        message: `User no longer exists`,
+                    },
+                ],
+            };
+        }
+
+        user.password = await argon2.hash(newPassword);
+        await em.persistAndFlush(user);
+
+        // login user
+        (req.session as ExtendedSessionType)!.userId = user.id;
+
+        return {
+            user,
+        };
     }
 
     // UserResponse то что нужно возвращать из register и что вернет гкл

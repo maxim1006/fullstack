@@ -7,7 +7,7 @@ import { buildSchema } from 'type-graphql';
 import { HelloResolver } from './resolvers/hello';
 import { PostResolver } from './resolvers/post';
 import { UserResolver } from './resolvers/user';
-import redis from 'redis';
+import Redis from 'ioredis';
 import session from 'express-session';
 import connectRedis from 'connect-redis';
 import { AppContext } from './types';
@@ -32,12 +32,13 @@ const main = async () => {
 
     // redis
     const RedisStore = connectRedis(session);
-    const redisClient = redis.createClient();
+    const redisClient = new Redis();
 
     // отключаю корс для http://localhost:3000, также в apolloServer.applyMiddleware({ app, cors: false });
     app.use(
         cors({
-            origin: 'http://localhost:3000',
+            // prod
+            origin: ['http://localhost:3000', 'https://studio.apollographql.com'],
             credentials: true,
         })
     );
@@ -74,7 +75,7 @@ const main = async () => {
             validate: false,
         }),
         // через контекст гкл могу достать res req
-        context: ({ req, res }): AppContext => ({ em: orm.em, req, res }),
+        context: ({ req, res }): AppContext => ({ em: orm.em, req, res, redis: redisClient }),
     });
 
     // http://localhost:4000/graphql - playground

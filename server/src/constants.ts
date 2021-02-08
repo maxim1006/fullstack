@@ -13,3 +13,5 @@ export const DBErrorCodes = new Map<string, { code: string; message: string }>([
 ]);
 
 export const QID = 'qid';
+
+export const FORGET_PASSWORD_PREFIX = 'forget-password:';
